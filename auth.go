@@ -14,10 +14,11 @@ type Auth struct {
 	TranKey string `json:"tranKey"`
 }
 
+/*
 // AuthBody structure
 type AuthBody struct {
 	ConnectionType string `json:"connectionType"`
 	Endpoint       string `json:"endpoint"`
 	Login          string `json:"login"`
 	TranKey        string `json:"tranKey"`
-}
+}*/

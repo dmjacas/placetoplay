@@ -4,12 +4,13 @@ import "time"
 
 // RedirectRequest structure
 type RedirectRequest struct {
+	Auth          *Auth                `json:"auth"`
 	Locale        string               `json:"locale"`
 	Payer         *Person              `json:"payer"`
 	Buyer         *Person              `json:"buyer"`
 	Payment       *PaymentRequest      `json:"payment"`
 	Subscription  *SubscriptionRequest `json:"subscription"`
-	Fields        []NameValuePair      `json:"fields"`
+	Fields        []*NameValuePair     `json:"fields"`
 	PaymentMethod string               `json:"paymentMethod"`
 	Expiration    time.Time            `json:"expiration"`
 	ReturnURL     string               `json:"returnUrl"`
@@ -30,6 +31,6 @@ type RedirectResponse struct {
 type RedirectInformation struct {
 	Status       *Status               `json:"status"`
 	Request      *RedirectRequest      `json:"request"`
-	Payment      []Transaction         `json:"payment"`
+	Payment      []*Transaction        `json:"payment"`
 	Subscription *SubscriptionResponse `json:"subscription"`
 }
