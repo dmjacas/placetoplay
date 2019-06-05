@@ -85,7 +85,7 @@ func AuthRequest(login, Secret string) *Auth {
 }
 
 // CreateRequest Create paymente request
-func CreateRequest(data *RedirectRequest) *RedirectRequest {
+func CreateRequest(data *RedirectRequest) *RedirectResponse {
 	auth := AuthRequest(Login, Secret)
 	data.Auth = auth
 
@@ -95,17 +95,17 @@ func CreateRequest(data *RedirectRequest) *RedirectRequest {
 	}
 	fmt.Println(URLPayment)
 
-	ret, err := http.Post(URLPayment, "application/json", bytes.NewBuffer(jsonRequest))
+	ret, err := http.Post(URLPayment+"api/session", "application/json", bytes.NewBuffer(jsonRequest))
 	if err != nil {
 		fmt.Println("error 1")
 	}
 	dat, _ := ioutil.ReadAll(ret.Body)
-	var retorno = RedirectResponse{}
+	var retorno = &RedirectResponse{}
 	if err = json.Unmarshal(dat, &retorno); err != nil {
 		fmt.Println("error 2")
 	}
 	fmt.Println(ret.Body)
-	return data
+	return retorno
 }
 func main() {
 	fmt.Println("Geometrical shape properties")
