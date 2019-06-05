@@ -4,7 +4,7 @@ package placetopay
 type PaymentRequest struct {
 	Reference    string           `json:"reference"`
 	Description  string           `json:"description"`
-	Amount       *Amount          `json:"ammount"`
+	Amount       *Amount          `json:"amount"`
 	AllowPartial bool             `json:"allowPartial"`
 	Shipping     *Person          `json:"shipping"`
 	Items        []*Item          `json:"items"`

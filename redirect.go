@@ -1,20 +1,20 @@
 package placetopay
 
-import "time"
+import "gopkg.in/guregu/null.v3"
 
 // RedirectRequest structure
 type RedirectRequest struct {
 	Auth          *Auth                `json:"auth"`
-	Locale        string               `json:"locale"`
+	Locale        string               `json:"locale" `
 	Payer         *Person              `json:"payer"`
 	Buyer         *Person              `json:"buyer"`
 	Payment       *PaymentRequest      `json:"payment"`
 	Subscription  *SubscriptionRequest `json:"subscription"`
 	Fields        []*NameValuePair     `json:"fields"`
-	PaymentMethod string               `json:"paymentMethod"`
-	Expiration    time.Time            `json:"expiration"`
+	PaymentMethod null.String          `json:"paymentMethod"`
+	Expiration    string               `json:"expiration"`
 	ReturnURL     string               `json:"returnUrl"`
-	IPAddres      string               `json:"ipAddres"`
+	IPAddres      string               `json:"ipAddress"`
 	UserAgent     string               `json:"userAgent"`
 	SkipResult    bool                 `json:"skipResult"`
 	NoBuyerFill   bool                 `json:"noBuyerFill"`

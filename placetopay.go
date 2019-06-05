@@ -8,25 +8,10 @@ import (
 	"fmt"
 	"io/ioutil"
 	"math/rand"
-	"net"
 	"net/http"
 	"time"
 )
 
-var URLPayment string
-var URLReturn string
-var Login string
-var Secret string
-var DBAConection string
-
-// Config config payment library
-func Config(Payment, Return, secret, login string) {
-	URLReturn = Return
-	URLPayment = Payment
-	Login = login
-	Secret = secret
-
-}
 func init() {
 	const ReverseOrderStatus = "reversed"
 
@@ -53,6 +38,7 @@ func sha1Encode(str string) string {
 }
 
 func encodeBase64(msg string) string {
+
 	encoded := base64.StdEncoding.EncodeToString([]byte(msg))
 	return encoded
 }
@@ -67,64 +53,99 @@ func decodeBase64(str string) string {
 }
 
 // AuthRequest create autentication request
-func AuthRequest(login, Secret string) *Auth {
+func AuthRequest(login, Secret string) (*Auth, string) {
 	date := time.Now()
 	nonce := RandStringBytesRmndr(16)
-	nonceEncode := encodeBase64(sha1Encode(nonce))
+	nonceEncode := encodeBase64(nonce)
 	fmt.Println(nonce)
 	fmt.Println(nonceEncode)
 	seed := date.Format(time.RFC3339)
+	fmt.Println(nonce + string(seed) + Secret)
 	tranKey := encodeBase64(sha1Encode(nonce + string(seed) + Secret))
+	expiration := date.Add(time.Minute * time.Duration(10)).Format(time.RFC3339)
 	auth := &Auth{
 		Login:   login,
 		Nonce:   nonceEncode,
 		TranKey: tranKey,
 		Seed:    seed,
 	}
-	return auth
+	return auth, expiration
 }
 
 // CreateRequest Create paymente request
-func CreateRequest(data *RedirectRequest) *RedirectResponse {
-	auth := AuthRequest(Login, Secret)
+func CreateRequest(data *RedirectRequest) RedirectResponse {
+
+	auth, expiration := AuthRequest(Login, Secret)
 	data.Auth = auth
+	data.Expiration = expiration
 
 	jsonRequest, err := json.Marshal(data)
+
 	if err != nil {
 		fmt.Println("error json")
 	}
-	fmt.Println(URLPayment)
-
-	ret, err := http.Post(URLPayment+"api/session", "application/json", bytes.NewBuffer(jsonRequest))
+	response, err := http.Post(URLPayment+"api/session", "application/json", bytes.NewBuffer(jsonRequest))
 	if err != nil {
-		fmt.Println("error 1")
+		fmt.Println("error http")
+		// return
 	}
-	dat, _ := ioutil.ReadAll(ret.Body)
-	var retorno = &RedirectResponse{}
-	if err = json.Unmarshal(dat, &retorno); err != nil {
-		fmt.Println("error 2")
+
+	dataResp, _ := ioutil.ReadAll(response.Body)
+
+	var placeToPayResponse RedirectResponse
+
+	if err = json.Unmarshal(dataResp, &placeToPayResponse); err != nil {
+		fmt.Println("error http")
+		//	return
 	}
-	fmt.Println(ret.Body)
-	return retorno
+
+	stringBuyer, err := json.Marshal(data.Buyer)
+
+	if err != nil {
+		fmt.Printf("Error: %s", err)
+		//	return
+	}
+	stringPayment, err := json.Marshal(data.Payment)
+	if err != nil {
+		fmt.Printf("Error: %s", err)
+		// return
+	}
+
+	stringResponse, err := json.Marshal(placeToPayResponse)
+	if err != nil {
+		fmt.Printf("Error: %s", err)
+		// return
+	}
+
+	tx := DB.Begin()
+	purchase := NewPurchase(&NewPurchaseParams{
+		Buyer:    string(stringBuyer),
+		Locale:   "es_CO",
+		Payment:  string(stringPayment),
+		Response: string(stringResponse),
+		Type:     "",
+		UserID:   3,
+	})
+	if result := tx.Create(&purchase); result.Error != nil {
+		tx.Rollback()
+		//c.Error(result.Error)
+		// return
+	}
+
+	if result := tx.Commit(); result.Error != nil {
+		tx.Rollback()
+		// c.Error(result.Error)
+		// return
+	}
+	return placeToPayResponse
 }
+
+// GetRequestInformation optiene la informacion del pago
+func GetRequestInformation() {
+
+}
+
 func main() {
 	fmt.Println("Geometrical shape properties")
 
-}
-
-//GetIPAddress IP address from server
-func GetIPAddress() string {
-	addrs, err := net.InterfaceAddrs()
-	if err != nil {
-		return ""
-	}
-
-	for _, a := range addrs {
-		if ipnet, ok := a.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
-			if ipnet.IP.To4() != nil {
-				return ipnet.IP.String()
-			}
-		}
-	}
-	return ""
 }
