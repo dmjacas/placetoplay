@@ -10,7 +10,6 @@ import (
 type Purchase struct {
 	ID         int       `json:"id"`
 	Active     bool      `json:"active"`
-	UserID     int       `json:"name"`
 	Locale     string    `json:"locale"`
 	Buyer      string    `json:"buyer"`
 	Payment    string    `json:"payment"`
@@ -36,7 +35,6 @@ type NewPurchaseParams struct {
 func NewPurchase(params *NewPurchaseParams) *Purchase {
 	return &Purchase{
 		Active:   true,
-		UserID:   params.UserID,
 		Locale:   params.Locale,
 		Response: params.Response,
 		Buyer:    params.Buyer,

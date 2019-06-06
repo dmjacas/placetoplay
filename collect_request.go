@@ -6,3 +6,11 @@ type CollectRequest struct {
 	Payment    *PaymentRequest `json:"payment"`
 	Instrument *Instrument     `json:"instrument"`
 }
+
+// CollectBodyRequest
+type CollectBodyRequest struct {
+	Auth       *Auth        `json:"auth"`
+	Payer      *Person      `json:"payer"`
+	Payment    *PaymentBody `json:"paymemt"`
+	Instrument *Instrument  `json:"instrument"`
+}

@@ -12,3 +12,9 @@ type PaymentRequest struct {
 	Recurring    *Recurring       `json:"recurring"`
 	Subcribe     bool             `json:"subcribe"`
 }
+
+type PaymentBody struct {
+	Reference   string      `json:"reference"`
+	Description string      `json:"description"`
+	Amount      *AmountBody `json:"amount" binding:"required,dive"`
+}
