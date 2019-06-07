@@ -11,6 +11,7 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/jinzhu/gorm"
@@ -63,7 +64,7 @@ func migration() {
 	if pingErr != nil {
 		fmt.Println(pingErr)
 	} else {
-		P2PDB.AutoMigrate(&Purchase{})
+		P2PDB.AutoMigrate(&PlacetoPayRequestLog{}, &PlacetoPayGetInformationLog{})
 	}
 }
 
@@ -81,6 +82,7 @@ func CreateRequest(data *RedirectRequest) (*RedirectResponse, error) {
 	auth, expiration := authRequest()
 	data.Auth = auth
 	data.Expiration = expiration
+
 	jsonRequest, err := json.Marshal(data)
 	if err != nil {
 		return nil, errors.New("error to JSON encode the body request")
@@ -102,23 +104,41 @@ func CreateRequest(data *RedirectRequest) (*RedirectResponse, error) {
 	if err != nil {
 		return nil, errors.New("error to convert to string PaymentData")
 	}
-	stringResponse, err := json.Marshal(placeToPayResponse)
+	//stringResponse, err := json.Marshal(placeToPayResponse)
 	if err != nil {
 		return nil, errors.New("error to convert to string Response Data")
 	}
 
-	tx := P2PDB.Begin()
+	stringFields, err := json.Marshal(data.Buyer)
+	if err != nil {
+		return nil, errors.New("error to JSON encode the body request")
+	}
 
+	stringResponse, err := json.Marshal(placeToPayResponse)
+	if err != nil {
+		return nil, errors.New("error to JSON encode the body request")
+	}
+	tx := P2PDB.Begin()
 	// save the log of the payment request
-	purchase := NewPurchase(&NewPurchaseParams{
-		Buyer:    string(stringBuyer),
-		Locale:   "es_CO",
-		Payment:  string(stringPayment),
-		Response: string(stringResponse),
-		Type:     "",
-		UserID:   3,
+	requestLog := NewPlacetoPayRequestLog(&NewPlacetoPayRequestLogParams{
+		Buyer:          string(stringBuyer),
+		Reference:      data.Payment.Reference,
+		Payment:        string(stringPayment),
+		Expiration:     data.Expiration,
+		IPAddress:      data.IPAddres,
+		ReturnURL:      data.ReturnURL,
+		CancelURL:      data.ReturnURL,
+		SkipResult:     data.SkipResult,
+		NoBuyerFill:    data.NoBuyerFill,
+		CaptureAddress: false,
+		PaymentMethod:  false,
+		Fields:         string(stringFields),
+		RequestID:      strconv.Itoa(placeToPayResponse.RequestID),
+		ProcessURL:     placeToPayResponse.ProcessURL,
+		Message:        placeToPayResponse.Status.Message,
+		Response:       string(stringResponse),
 	})
-	if result := tx.Create(&purchase); result.Error != nil {
+	if result := tx.Create(&requestLog); result.Error != nil {
 		tx.Rollback()
 		return nil, errors.New("error in saving the data")
 	}
@@ -131,7 +151,7 @@ func CreateRequest(data *RedirectRequest) (*RedirectResponse, error) {
 
 // GetRequestInformation get the status information of the request
 // requestID request id
-func GetRequestInformation(requestID string) (*RedirectResponse, error) {
+func GetRequestInformation(requestID string) (*RedirectInformation, error) {
 	auth, _ := authRequest()
 	bodyRequest := &StatusBodyRequest{
 		Auth: auth,
@@ -146,10 +166,49 @@ func GetRequestInformation(requestID string) (*RedirectResponse, error) {
 	}
 	dataResp, _ := ioutil.ReadAll(response.Body)
 
-	var placeToPayResponse RedirectResponse
+	var placeToPayResponse RedirectInformation
 
 	if err = json.Unmarshal(dataResp, &placeToPayResponse); err != nil {
 		return nil, errors.New("error in convert response to RedirectResponse")
+	}
+	stringStatus, err := json.Marshal(placeToPayResponse.Status)
+	if err != nil {
+		return nil, errors.New("error to JSON encode the body request")
+	}
+	stringRequest, err := json.Marshal(placeToPayResponse.Request)
+	if err != nil {
+		return nil, errors.New("error to JSON encode the body request")
+	}
+
+	stringPayment, err := json.Marshal(placeToPayResponse.Payment)
+	if err != nil {
+		return nil, errors.New("error to JSON encode the body request")
+	}
+	stringSubscription, err := json.Marshal(placeToPayResponse.Subscription)
+	if err != nil {
+		return nil, errors.New("error to JSON encode the body request")
+	}
+	tx := P2PDB.Begin()
+	// save the log of the payment request
+	requestLog := NewPlacetoPayGetInformationLog(&NewPlacetoPayGetInformationLogParams{
+		RequestID:         requestID,
+		AllStatus:         string(stringStatus),
+		AllRequest:        string(stringRequest),
+		AllPayment:        string(stringPayment),
+		AllSubscription:   string(stringSubscription),
+		Status:            placeToPayResponse.Status.Status,
+		Reason:            placeToPayResponse.Status.Reason,
+		Message:           placeToPayResponse.Status.Message,
+		InternalReference: "asas", // placeToPayResponse.Payment.InternalReference,
+	})
+
+	if result := tx.Create(&requestLog); result.Error != nil {
+		tx.Rollback()
+		return nil, errors.New("error in saving the data")
+	}
+	if result := tx.Commit(); result.Error != nil {
+		tx.Rollback()
+		return nil, errors.New("error in saving the data")
 	}
 	return &placeToPayResponse, nil
 
@@ -331,4 +390,211 @@ type Status struct {
 	Reason  string    `json:"reason,omitempty"`
 	Message string    `json:"message,omitempty"`
 	Date    time.Time `json:"date,omitempty"`
+}
+
+//Person structure
+type Person struct {
+	DocumenType string  `json:"documentType,omitempty"`
+	Document    string  `json:"document,omitempty"`
+	Name        string  `json:"name,omitempty"`
+	Surname     string  `json:"surname,omitempty"`
+	Company     string  `json:"company,omitempty"`
+	Email       string  `json:"email,omitempty"`
+	Addres      *Addres `json:"addres,omitempty"`
+	Mobile      string  `json:"mobile,omitempty"`
+}
+
+// Addres structure
+type Addres struct {
+	Street     string `json:"street,omitempty"`
+	City       string `json:"city,omitempty"`
+	State      string `json:"state,omitempty"`
+	PostalCode string `json:"postalCode,omitempty"`
+	Country    string `json:"country,omitempty"`
+	Phone      string `json:"phone,omitempty"`
+}
+
+// RedirectRequest structure
+type RedirectRequest struct {
+	Auth          *Auth                `json:"auth,omitempty"`
+	Locale        string               `json:"locale,omitempty" `
+	Payer         *Person              `json:"payer,omitempty"`
+	Buyer         *Person              `json:"buyer,omitempty"`
+	Payment       *PaymentRequest      `json:"payment,omitempty"`
+	Subscription  *SubscriptionRequest `json:"subscription,omitempty"`
+	Fields        []*NameValuePair     `json:"fields,omitempty"`
+	PaymentMethod string               `json:"paymentMethod,omitempty"`
+	Expiration    string               `json:"expiration,omitempty"`
+	ReturnURL     string               `json:"returnUrl,omitempty"`
+	IPAddres      string               `json:"ipAddress,omitempty"`
+	UserAgent     string               `json:"userAgent,omitempty"`
+	SkipResult    bool                 `json:"skipResult,omitempty"`
+	NoBuyerFill   bool                 `json:"noBuyerFill,omitempty"`
+}
+
+// RedirectResponse structure
+type RedirectResponse struct {
+	Status     *Status `json:"status,"`
+	RequestID  int     `json:"requestId"`
+	ProcessURL string  `json:"processUrl"`
+}
+
+// RedirectInformation structure
+type RedirectInformation struct {
+	Status       *Status               `json:"status"`
+	Request      *RedirectRequest      `json:"request"`
+	Payment      interface{}           `json:"payment"`
+	Subscription *SubscriptionResponse `json:"subscription"`
+}
+
+//AmountBase structure
+type AmountBase struct {
+	Currency string  `json:"currency,omitempty"`
+	Total    float64 `json:"total,omitempty"`
+}
+
+//AmountConversion structure
+type AmountConversion struct {
+	From   *AmountBase `json:"from"`
+	To     *AmountBase `json:"to"`
+	Factor float64     `json:"factor"`
+}
+
+//Transaction structure
+type Transaction struct {
+	Status            *Status           `json:"status,omitempty"`
+	InternalReference string            `json:"internalReference,omitempty"`
+	Reference         string            `json:"reference,omitempty"`
+	PaymentMethod     string            `json:"paymentMethod,omitempty"`
+	PaymentMethodName string            `json:"paymentMethodName,omitempty"`
+	IssuerName        string            `json:"issuerName,omitempty"`
+	Amount            *AmountConversion `json:"amount,omitempty"`
+	Receipt           string            `json:"receipt,omitempty"`
+	Frachise          string            `json:"frachise,omitempty"`
+	Refunded          bool              `json:"refunded,omitempty"`
+	Authorization     string            `json:"authorization,omitempty"`
+	ProcessorFields   *NameValuePair    `json:"processorFields,omitempty"`
+}
+
+// ReverseResponse structure
+type ReverseResponse struct {
+	Status  *Status      `json:"status,omitempty"`
+	Payment *Transaction `json:"payment,omitempty"`
+}
+
+// ReverseBodyRequest structure
+type ReverseBodyRequest struct {
+	Auth              *Auth  `json:"status,omitempty"`
+	InternalReference string `json:"internalReference,omitempty"`
+}
+
+//SubscriptionRequest structure
+type SubscriptionRequest struct {
+	Reference   string         `json:"reference,omitempty"`
+	Description string         `json:"description,omitempty"`
+	Fields      *NameValuePair `json:"fields,omitempty"`
+}
+
+//SubscriptionResponse structure
+type SubscriptionResponse struct {
+	Status    *Status        `json:"reference,omitempty"`
+	Type      string         `json:"type,omitempty"`
+	Intrument *NameValuePair `json:"fields,omitempty"`
+}
+
+// SimpleToken structure
+type SimpleToken struct {
+	Token        string `json:"token,omitempty"`
+	Subtoken     string `json:"subtoken,omitempty"`
+	Installments int    `json:"installments,omitempty"`
+	Cvv          string `json:"cvv,omitempty"`
+}
+
+//Recurring structure
+type Recurring struct {
+	Periodicity     string    `json:"periodicity,omitempty"`
+	Interval        int       `json:"interval,omitempty"`
+	NextPayment     time.Time `json:"nextPayment,omitempty"`
+	MaxPeriods      int       `json:"maxPeriods,omitempty"`
+	DueDate         time.Time `json:"dueDate,omitempty"`
+	NotificationURL string    `json:"notificationUrl,omitempty"`
+}
+
+//Item structure
+type Item struct {
+	Sku      string  `json:"street,omitempty"`
+	Name     string  `json:"name,omitempty"`
+	Category string  `json:"category,omitempty"`
+	Qty      string  `json:"qty,omitempty"`
+	Price    float64 `json:"price,omitempty"`
+	Tax      float64 `json:"tax,omitempty"`
+}
+
+//DocumentType structure
+type DocumentType struct {
+	Country      string `json:"country,omitempty"`
+	Code         string `json:"code,omitempty"`
+	DocumentType string `json:"documentType,omitempty"`
+}
+
+// PaymentRequest structure
+type PaymentRequest struct {
+	Reference    string           `json:"reference,omitempty"`
+	Description  string           `json:"description,omitempty"`
+	Amount       *Amount          `json:"amount,omitempty"`
+	AllowPartial bool             `json:"allowPartial,omitempty"`
+	Shipping     *Person          `json:"shipping,omitempty"`
+	Items        []*Item          `json:"items,omitempty"`
+	Fields       []*NameValuePair `json:"fields,omitempty"`
+	Recurring    *Recurring       `json:"recurring,omitempty"`
+	Subcribe     bool             `json:"subcribe,omitempty"`
+}
+
+// Instrument structure
+type Instrument struct {
+	Token string `json:"token"`
+}
+
+//NameValuePair structure
+type NameValuePair struct {
+	Keyword   string `json:"keyword,omitempty"`
+	Value     string `json:"value,omitempty"`
+	DisplayOn string `json:"displayOn,omitempty"`
+}
+
+//AmountDetail structure
+type AmountDetail struct {
+	Kind   string  `json:"kint,omitempty"`
+	Amount float64 `json:"amount,omitempty"`
+	Base   float32 `json:"base,omitempty"`
+}
+
+//Amount structure
+type Amount struct {
+	Currency string          `json:"currency,omitempty"`
+	Total    float64         `json:"total,omitempty"`
+	Taxes    []*TaxDetail    `json:"taxes,omitempty"`
+	Details  []*AmountDetail `json:"details,omitempty"`
+}
+
+//CollectRequest structure
+type CollectRequest struct {
+	Player     *Person         `json:"player"`
+	Payment    *PaymentRequest `json:"payment"`
+	Instrument *Instrument     `json:"instrument"`
+}
+
+// CollectBodyRequest structure
+type CollectBodyRequest struct {
+	Auth       *Auth        `json:"auth"`
+	Payer      *Person      `json:"payer"`
+	Payment    *PaymentBody `json:"paymemt"`
+	Instrument *Instrument  `json:"instrument"`
+}
+
+//PaymentBody structure
+type PaymentBody struct {
+	Reference   string  `json:"reference"`
+	Description string  `json:"description"`
+	Amount      *Amount `json:"amount" binding:"required,dive"`
 }
