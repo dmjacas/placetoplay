@@ -201,15 +201,15 @@ func GetRequestInformation(requestID string) (*RedirectInformation, error) {
 
 }
 
-// ReversePaymemt reverte payment request
+// ReversePayment reverte payment request
 // requestID request id
-func ReversePaymemt(requestID string) (*ReverseResponse, error) {
+func ReversePayment(internalReference string) (*ReverseResponse, error) {
 	// Get auth object
 	auth, _ := authRequest()
 	// Generate body request
 	bodyRequest := &ReverseBodyRequest{
 		Auth:              auth,
-		InternalReference: requestID,
+		InternalReference: internalReference,
 	}
 	// Encode JSON  body request
 	jsonRequest, err := json.Marshal(bodyRequest)
@@ -250,10 +250,6 @@ func ReversePaymemt(requestID string) (*ReverseResponse, error) {
 	}
 	return &placeToPayResponse, nil
 }
-
-// NotificationTest validate the status of a payment transaction
-
-func NotificationTest() {}
 
 //CollectPayment implementar v1.2
 /*func CollectPayment(colection *CollectBodyRequest) RedirectInformation {

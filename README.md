@@ -5,10 +5,10 @@ Una  librería instalable que implementa los métodos necesarios para el uso del
 Instalar la librería con el siguiente comando
 
 ```
-go get 
+go get github.com/dmjacas/placetoplay 
 ```
 
-### Instalación 🔧
+### Instalación
 
 Inicializar la librería utilizando las configuraciones del proyecto.
 
@@ -77,9 +77,9 @@ La variable ```response``` es del tipo placetopay.RedirectInformation
 
 Método para cancelar un pago
 ```
-requestID identificador de la solicitud de pago
+internalReference referencia interna del pago
 
-response, err := placetopay.ReversePaymemt(requestID)
+response, err := placetopay.ReversePaymemt(internalReference)
 
 ```
 La variable ```response``` es del tipo placetopay.ReverseResponse
