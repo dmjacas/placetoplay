@@ -35,18 +35,20 @@ var db *dBConfig
 
 // Config configure payment library
 // urlPayment PlacetoPay api url
-// secret PlacetoPay secret password
 // login PlacetoPay login
+// secret PlacetoPay secret password
 // dbCharset db Charset
 // dbDialect db Dialect
 // dbName dn name
-// dbPassword db password
 // dbUsername db username
-func Config(urlPayment, secret, login, dbCharset, dbDialect, dbName, dbPassword, dbUsername string) {
+// dbPassword db password
+// Expiration time in minutes that the payment request lasts
+
+func Config(urlPayment, login, secret, dbCharset, dbDialect, dbName, dbUsername, dbPassword string, Expiration int) {
 	P2PURLPayment = urlPayment
 	P2PLogin = login
 	P2PSecret = secret
-	P2PExpiration = 10
+	P2PExpiration = Expiration
 	db := &dBConfig{
 		Dialect:  dbDialect,
 		Username: dbUsername,
@@ -56,6 +58,7 @@ func Config(urlPayment, secret, login, dbCharset, dbDialect, dbName, dbPassword,
 	}
 	P2PDB, _ = Connect(db)
 	migration()
+
 }
 
 // migration  create table if not exist
@@ -64,7 +67,7 @@ func migration() {
 	if pingErr != nil {
 		fmt.Println(pingErr)
 	} else {
-		P2PDB.AutoMigrate(&PlacetoPayRequestLog{}, &PlacetoPayGetInformationLog{})
+		P2PDB.AutoMigrate(&PlacetoPayRequestLog{}, &PlacetoPayGetInformationLog{}, &PlacetoPayReversePaymemt{})
 	}
 }
 
@@ -96,14 +99,6 @@ func CreateRequest(data *RedirectRequest) (*RedirectResponse, error) {
 	if err = json.Unmarshal(dataResp, &placeToPayResponse); err != nil {
 		return nil, errors.New("error in the return values of the http call")
 	}
-	stringBuyer, err := json.Marshal(data.Buyer)
-	if err != nil {
-		return nil, errors.New("error to convert to string BuyerData")
-	}
-	stringPayment, err := json.Marshal(data.Payment)
-	if err != nil {
-		return nil, errors.New("error to convert to string PaymentData")
-	}
 	//stringResponse, err := json.Marshal(placeToPayResponse)
 	if err != nil {
 		return nil, errors.New("error to convert to string Response Data")
@@ -120,10 +115,10 @@ func CreateRequest(data *RedirectRequest) (*RedirectResponse, error) {
 	}
 	tx := P2PDB.Begin()
 	// save the log of the payment request
-	requestLog := NewPlacetoPayRequestLog(&NewPlacetoPayRequestLogParams{
-		Buyer:          string(stringBuyer),
+	requestLog := PlacetoPayRequestLog{
+		Active:         true,
 		Reference:      data.Payment.Reference,
-		Payment:        string(stringPayment),
+		AllResponse:    string(stringResponse),
 		Expiration:     data.Expiration,
 		IPAddress:      data.IPAddres,
 		ReturnURL:      data.ReturnURL,
@@ -136,8 +131,7 @@ func CreateRequest(data *RedirectRequest) (*RedirectResponse, error) {
 		RequestID:      strconv.Itoa(placeToPayResponse.RequestID),
 		ProcessURL:     placeToPayResponse.ProcessURL,
 		Message:        placeToPayResponse.Status.Message,
-		Response:       string(stringResponse),
-	})
+	}
 	if result := tx.Create(&requestLog); result.Error != nil {
 		tx.Rollback()
 		return nil, errors.New("error in saving the data")
@@ -171,36 +165,29 @@ func GetRequestInformation(requestID string) (*RedirectInformation, error) {
 	if err = json.Unmarshal(dataResp, &placeToPayResponse); err != nil {
 		return nil, errors.New("error in convert response to RedirectResponse")
 	}
-	stringStatus, err := json.Marshal(placeToPayResponse.Status)
-	if err != nil {
-		return nil, errors.New("error to JSON encode the body request")
-	}
-	stringRequest, err := json.Marshal(placeToPayResponse.Request)
-	if err != nil {
-		return nil, errors.New("error to JSON encode the body request")
-	}
 
-	stringPayment, err := json.Marshal(placeToPayResponse.Payment)
+	stringResponse, err := json.Marshal(placeToPayResponse)
 	if err != nil {
 		return nil, errors.New("error to JSON encode the body request")
 	}
-	stringSubscription, err := json.Marshal(placeToPayResponse.Subscription)
-	if err != nil {
-		return nil, errors.New("error to JSON encode the body request")
+	InternalReference := ""
+	Authorization := ""
+	if placeToPayResponse.Payment[0] != nil {
+		InternalReference = placeToPayResponse.Payment[0].Receipt
+		Authorization = placeToPayResponse.Payment[0].Authorization
 	}
 	tx := P2PDB.Begin()
 	// save the log of the payment request
-	requestLog := NewPlacetoPayGetInformationLog(&NewPlacetoPayGetInformationLogParams{
+	requestLog := &PlacetoPayGetInformationLog{
+		Active:            true,
 		RequestID:         requestID,
-		AllStatus:         string(stringStatus),
-		AllRequest:        string(stringRequest),
-		AllPayment:        string(stringPayment),
-		AllSubscription:   string(stringSubscription),
+		AllResponse:       string(stringResponse),
 		Status:            placeToPayResponse.Status.Status,
 		Reason:            placeToPayResponse.Status.Reason,
 		Message:           placeToPayResponse.Status.Message,
-		InternalReference: "asas", // placeToPayResponse.Payment.InternalReference,
-	})
+		InternalReference: InternalReference,
+		Authorization:     Authorization,
+	}
 
 	if result := tx.Create(&requestLog); result.Error != nil {
 		tx.Rollback()
@@ -230,7 +217,7 @@ func ReversePaymemt(requestID string) (*ReverseResponse, error) {
 		return nil, errors.New("error to JSON encode the body request")
 	}
 	// call the P2P api
-	response, err := http.Post(P2PURLPayment+"api/reverse/", "application/json", bytes.NewBuffer(jsonRequest))
+	response, err := http.Post(P2PURLPayment+"api/reverse", "application/json", bytes.NewBuffer(jsonRequest))
 	if err != nil {
 		return nil, errors.New("error in the http call")
 	}
@@ -242,11 +229,34 @@ func ReversePaymemt(requestID string) (*ReverseResponse, error) {
 	if err = json.Unmarshal(dataResp, &placeToPayResponse); err != nil {
 		return nil, errors.New("error in convert response to ReverseResponse")
 	}
+
+	tx := P2PDB.Begin()
+	// save the log of the payment request
+	requestLog := &PlacetoPayReversePaymemt{
+		Active:  true,
+		Status:  placeToPayResponse.Status.Status,
+		Reason:  placeToPayResponse.Status.Reason,
+		Message: placeToPayResponse.Status.Message,
+		Date:    placeToPayResponse.Status.Date,
+	}
+
+	if result := tx.Create(&requestLog); result.Error != nil {
+		tx.Rollback()
+		return nil, errors.New("error in saving the data")
+	}
+	if result := tx.Commit(); result.Error != nil {
+		tx.Rollback()
+		return nil, errors.New("error in saving the data")
+	}
 	return &placeToPayResponse, nil
 }
 
-//CollectPayment (falta)
-func CollectPayment(colection *CollectBodyRequest) RedirectInformation {
+// NotificationTest validate the status of a payment transaction
+
+func NotificationTest() {}
+
+//CollectPayment implementar v1.2
+/*func CollectPayment(colection *CollectBodyRequest) RedirectInformation {
 	auth, _ := authRequest()
 
 	colection.Auth = auth
@@ -270,7 +280,7 @@ func CollectPayment(colection *CollectBodyRequest) RedirectInformation {
 		//	return
 	}
 	return placeToPayResponse
-}
+}*/
 
 /*
 *	Complements functions
@@ -441,10 +451,22 @@ type RedirectResponse struct {
 
 // RedirectInformation structure
 type RedirectInformation struct {
-	Status       *Status               `json:"status"`
-	Request      *RedirectRequest      `json:"request"`
-	Payment      interface{}           `json:"payment"`
-	Subscription *SubscriptionResponse `json:"subscription"`
+	Status       *Status                   `json:"status"`
+	Request      *RedirectRequest          `json:"request"`
+	Payment      []*BodyPaymentInformation `json:"payment"`
+	Subscription *SubscriptionResponse     `json:"subscription"`
+}
+
+//BodyPaymentInformation structure
+type BodyPaymentInformation struct {
+	Status            *Status `json:"status,omitempty"`
+	InternalReference int64   `json:"internalReference,omitempty"`
+	PaymentMethod     string  `json:"paymentMethod,omitempty"`
+	PaymentMethodName string  `json:"paymentMethodName,omitempty"`
+	IssuerName        string  `json:"issuerName,omitempty"`
+	Reference         string  `json:"reference,omitempty"`
+	Authorization     string  `json:"authorization,omitempty"`
+	Receipt           string  `json:"receipt,omitempty"`
 }
 
 //AmountBase structure
@@ -484,7 +506,7 @@ type ReverseResponse struct {
 
 // ReverseBodyRequest structure
 type ReverseBodyRequest struct {
-	Auth              *Auth  `json:"status,omitempty"`
+	Auth              *Auth  `json:"auth,omitempty"`
 	InternalReference string `json:"internalReference,omitempty"`
 }
 
