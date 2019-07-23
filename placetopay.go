@@ -44,7 +44,7 @@ var db *dBConfig
 // dbPassword db password
 // Expiration time in minutes that the payment request lasts
 
-// Placeto pay db conection
+// Config pay db connectiong
 func Config(urlPayment, login, secret, dbCharset, dbDialect, dbName, dbUsername, dbHost, dbPassword string, Expiration int) {
 	P2PURLPayment = urlPayment
 	P2PLogin = login
@@ -294,7 +294,7 @@ func Connect(config *dBConfig) (*gorm.DB, error) {
 		config.Charset)
 	db, err := gorm.Open(config.Dialect, dbURI)
 	if err != nil {
-		log.Fatalln("aqui", err)
+		log.Fatalln("db connect", err)
 	}
 
 	return db, nil
@@ -377,7 +377,7 @@ type dBConfig struct {
 	Username string
 	Password string
 	Name     string
-	Charset  string
+	Charset  string `default:"mysql"`
 }
 
 // StatusBodyRequest body request structure
