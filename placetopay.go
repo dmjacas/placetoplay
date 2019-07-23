@@ -44,7 +44,8 @@ var db *dBConfig
 // dbPassword db password
 // Expiration time in minutes that the payment request lasts
 
-func Config(urlPayment, login, secret, dbCharset, dbDialect, dbName, dbUsername, dbPassword string, Expiration int) {
+// Placeto pay db conection
+func Config(urlPayment, login, secret, dbCharset, dbDialect, dbName, dbUsername, dbHost, dbPassword string, Expiration int) {
 	P2PURLPayment = urlPayment
 	P2PLogin = login
 	P2PSecret = secret
@@ -53,6 +54,7 @@ func Config(urlPayment, login, secret, dbCharset, dbDialect, dbName, dbUsername,
 		Dialect:  dbDialect,
 		Username: dbUsername,
 		Password: dbPassword,
+		Host:     dbHost,
 		Name:     dbName,
 		Charset:  dbCharset,
 	}
@@ -284,12 +286,12 @@ func ReversePayment(internalReference string) (*ReverseResponse, error) {
 
 // Connect handles the connection to the database and returns it
 func Connect(config *dBConfig) (*gorm.DB, error) {
-	dbURI := fmt.Sprintf("%s:%s@/%s?charset=%s&parseTime=True",
+	dbURI := fmt.Sprintf("%s:%s@tcp(%s)/%s?charset=%s&parseTime=True",
 		config.Username,
 		config.Password,
+		config.Host,
 		config.Name,
 		config.Charset)
-
 	db, err := gorm.Open(config.Dialect, dbURI)
 	if err != nil {
 		log.Fatalln("aqui", err)
@@ -370,6 +372,7 @@ type Auth struct {
 
 // dBConfig database config structure
 type dBConfig struct {
+	Host     string `default:"localhost"`
 	Dialect  string `default:"mysql"`
 	Username string
 	Password string
