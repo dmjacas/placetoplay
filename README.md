@@ -21,10 +21,12 @@ Dialect (string) Dialecto de la base de datos (MySql, Postgres)
 DBName (string) Nombre de la base de datos
 DBPassword (string) Contrasena de la base de datos
 DBUsername (string) Usuario de la base de datos
+DBHost host de la base de datos
+DBPort puerto de la base de datos
 Expiration (int) tiempo de expiración de la solicitud de pago en minutos
 ```
 ```
-placetopay.Config(URLPayment,Secret, Login, Charset, Dialect,DBName, DBPassword, DBUsername,Expiration)
+placetopay.Config(URLPayment,Secret, Login, Charset, Dialect,DBName, DBPassword, DBUsername,DBHost, DBPort,,Expiration)
 
 ```
 
