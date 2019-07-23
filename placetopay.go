@@ -158,6 +158,7 @@ func GetRequestInformation(requestID string) (*RedirectInformation, error) {
 		return nil, errors.New("error to JSON encode the body request")
 	}
 	response, err := http.Post(P2PURLPayment+"api/session/"+requestID, "application/json", bytes.NewBuffer(jsonRequest))
+
 	if err != nil {
 		return nil, errors.New("error in the http call")
 	}
@@ -175,10 +176,11 @@ func GetRequestInformation(requestID string) (*RedirectInformation, error) {
 	}
 	InternalReference := ""
 	Authorization := ""
-	if placeToPayResponse.Payment[0] != nil {
+	if placeToPayResponse.Payment != nil {
 		InternalReference = placeToPayResponse.Payment[0].Receipt
 		Authorization = placeToPayResponse.Payment[0].Authorization
 	}
+
 	tx := P2PDB.Begin()
 	// save the log of the payment request
 	requestLog := &PlacetoPayGetInformationLog{
@@ -453,10 +455,10 @@ type RedirectResponse struct {
 
 // RedirectInformation structure
 type RedirectInformation struct {
-	Status       *Status                   `json:"status"`
-	Request      *RedirectRequest          `json:"request"`
-	Payment      []*BodyPaymentInformation `json:"payment"`
-	Subscription *SubscriptionResponse     `json:"subscription"`
+	Status       *Status                   `json:"status,omitempty"`
+	Request      *RedirectRequest          `json:"request,omitempty"`
+	Payment      []*BodyPaymentInformation `json:"payment,omitempty"`
+	Subscription *SubscriptionResponse     `json:"subscription,omitempty"`
 }
 
 //BodyPaymentInformation structure
@@ -588,7 +590,7 @@ type NameValuePair struct {
 
 //AmountDetail structure
 type AmountDetail struct {
-	Kind   string  `json:"kint,omitempty"`
+	Kind   string  `json:"kind,omitempty"`
 	Amount float64 `json:"amount,omitempty"`
 	Base   float32 `json:"base,omitempty"`
 }
