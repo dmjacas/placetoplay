@@ -123,7 +123,7 @@ func CreateRequest(data *RedirectRequest) (*RedirectResponse, error) {
 		Reference:      data.Payment.Reference,
 		AllResponse:    string(stringResponse),
 		Expiration:     data.Expiration,
-		IPAddress:      data.IPAddres,
+		IPAddress:      data.IPAddress,
 		ReturnURL:      data.ReturnURL,
 		CancelURL:      data.ReturnURL,
 		SkipResult:     data.SkipResult,
@@ -392,10 +392,9 @@ type StatusBodyRequest struct {
 
 //TaxDetail structure
 type TaxDetail struct {
-	//
-	Kind   string  `json:"kint,omitempty"`
-	Amount float64 `json:"amount,omitempty"`
-	Base   float64 `json:"base,omitempty"`
+	ValueAddedTax string  `json:"valueAddedTax,omitempty"`
+	Amount        float64 `json:"amount,omitempty"`
+	Base          float64 `json:"base,omitempty"`
 }
 
 // Status structure
@@ -408,18 +407,18 @@ type Status struct {
 
 //Person structure
 type Person struct {
-	DocumenType string  `json:"documentType,omitempty"`
-	Document    string  `json:"document,omitempty"`
-	Name        string  `json:"name,omitempty"`
-	Surname     string  `json:"surname,omitempty"`
-	Company     string  `json:"company,omitempty"`
-	Email       string  `json:"email,omitempty"`
-	Addres      *Addres `json:"addres,omitempty"`
-	Mobile      string  `json:"mobile,omitempty"`
+	DocumenType string   `json:"documentType,omitempty"`
+	Document    string   `json:"document,omitempty"`
+	Name        string   `json:"name,omitempty"`
+	Surname     string   `json:"surname,omitempty"`
+	Company     string   `json:"company,omitempty"`
+	Email       string   `json:"email,omitempty"`
+	Address     *Address `json:"address,omitempty"`
+	Mobile      string   `json:"mobile,omitempty"`
 }
 
-// Addres structure
-type Addres struct {
+// Address structure
+type Address struct {
 	Street     string `json:"street,omitempty"`
 	City       string `json:"city,omitempty"`
 	State      string `json:"state,omitempty"`
@@ -440,7 +439,7 @@ type RedirectRequest struct {
 	PaymentMethod string               `json:"paymentMethod,omitempty"`
 	Expiration    string               `json:"expiration,omitempty"`
 	ReturnURL     string               `json:"returnUrl,omitempty"`
-	IPAddres      string               `json:"ipAddress,omitempty"`
+	IPAddress     string               `json:"ipAddress,omitempty"`
 	UserAgent     string               `json:"userAgent,omitempty"`
 	SkipResult    bool                 `json:"skipResult,omitempty"`
 	NoBuyerFill   bool                 `json:"noBuyerFill,omitempty"`
