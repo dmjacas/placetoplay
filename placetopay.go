@@ -181,26 +181,46 @@ func GetRequestInformation(requestID string) (*RedirectInformation, error) {
 		Authorization = placeToPayResponse.Payment[0].Authorization
 	}
 
-	tx := P2PDB.Begin()
 	// save the log of the payment request
-	requestLog := &PlacetoPayGetInformationLog{
-		Active:            true,
-		RequestID:         requestID,
-		AllResponse:       string(stringResponse),
-		Status:            placeToPayResponse.Status.Status,
-		Reason:            placeToPayResponse.Status.Reason,
-		Message:           placeToPayResponse.Status.Message,
-		InternalReference: InternalReference,
-		Authorization:     Authorization,
-	}
+	var infoLog PlacetoPayGetInformationLog
 
-	if result := tx.Create(&requestLog); result.Error != nil {
-		tx.Rollback()
-		return nil, errors.New("error in saving the data")
-	}
-	if result := tx.Commit(); result.Error != nil {
-		tx.Rollback()
-		return nil, errors.New("error in saving the data")
+	P2PDB.Where("request_id = ?", requestID).First(&infoLog)
+
+	if infoLog.ID == 0 {
+		tx := P2PDB.Begin()
+		requestLog := &PlacetoPayGetInformationLog{
+			Active:            true,
+			RequestID:         requestID,
+			AllResponse:       string(stringResponse),
+			Status:            placeToPayResponse.Status.Status,
+			Reason:            placeToPayResponse.Status.Reason,
+			Message:           placeToPayResponse.Status.Message,
+			InternalReference: InternalReference,
+			Authorization:     Authorization,
+		}
+
+		if result := tx.Create(&requestLog); result.Error != nil {
+			tx.Rollback()
+			return nil, errors.New("error in saving the data")
+		}
+		if result := tx.Commit(); result.Error != nil {
+			tx.Rollback()
+			return nil, errors.New("error in saving the data")
+		}
+
+	} else {
+		if infoLog.Status != placeToPayResponse.Status.Status {
+			infoLog.AllResponse = string(stringResponse)
+			infoLog.Status = placeToPayResponse.Status.Status
+			infoLog.Reason = placeToPayResponse.Status.Reason
+			infoLog.Message = placeToPayResponse.Status.Message
+			infoLog.InternalReference = InternalReference
+			infoLog.Authorization = Authorization
+			if result := P2PDB.Save(&infoLog); result.Error != nil {
+				return nil, errors.New("error updating the data")
+			}
+			fmt.Println("sds")
+		}
 	}
 	return &placeToPayResponse, nil
 
