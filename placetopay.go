@@ -482,14 +482,15 @@ type RedirectInformation struct {
 
 //BodyPaymentInformation structure
 type BodyPaymentInformation struct {
-	Status            *Status `json:"status,omitempty"`
-	InternalReference int64   `json:"internalReference,omitempty"`
-	PaymentMethod     string  `json:"paymentMethod,omitempty"`
-	PaymentMethodName string  `json:"paymentMethodName,omitempty"`
-	IssuerName        string  `json:"issuerName,omitempty"`
-	Reference         string  `json:"reference,omitempty"`
-	Authorization     string  `json:"authorization,omitempty"`
-	Receipt           string  `json:"receipt,omitempty"`
+	Status            *Status          `json:"status,omitempty"`
+	InternalReference int64            `json:"internalReference,omitempty"`
+	PaymentMethod     string           `json:"paymentMethod,omitempty"`
+	PaymentMethodName string           `json:"paymentMethodName,omitempty"`
+	IssuerName        string           `json:"issuerName,omitempty"`
+	Reference         string           `json:"reference,omitempty"`
+	Authorization     string           `json:"authorization,omitempty"`
+	Receipt           string           `json:"receipt,omitempty"`
+	ProcessorFields   []*NameValuePair `json:"processorFields,omitempty"`
 }
 
 //AmountBase structure
@@ -602,9 +603,22 @@ type Instrument struct {
 
 //NameValuePair structure
 type NameValuePair struct {
-	Keyword   string `json:"keyword,omitempty"`
-	Value     string `json:"value,omitempty"`
-	DisplayOn string `json:"displayOn,omitempty"`
+	Keyword   string      `json:"keyword,omitempty"`
+	Value     interface{} `json:"value,omitempty"`
+	DisplayOn string      `json:"displayOn,omitempty"`
+}
+
+//GenericInterface structure
+type GenericInterface interface {
+	getValue()
+}
+
+//NameValuePairValue structure
+type NameValuePairValue struct {
+	Code         string `json:"code"`
+	Type         string `json:"type"`
+	GroupCode    string `json:"groupCode"`
+	Installments string `json:"installments"`
 }
 
 //AmountDetail structure
