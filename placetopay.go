@@ -146,8 +146,7 @@ func CreateRequest(data *RedirectRequest) (*RedirectResponse, error) {
 	return &placeToPayResponse, nil
 }
 
-// GetRequestInformation get the status information of the request
-// requestID request id
+// GetRequestInformation get the status information of the request requestID request id
 func GetRequestInformation(requestID string) (*RedirectInformation, error) {
 	auth, _ := authRequest()
 	bodyRequest := &StatusBodyRequest{
@@ -174,13 +173,66 @@ func GetRequestInformation(requestID string) (*RedirectInformation, error) {
 	if err != nil {
 		return nil, errors.New("error to JSON encode the body request")
 	}
-	InternalReference := ""
-	Authorization := ""
-	if placeToPayResponse.Payment != nil {
-		InternalReference = placeToPayResponse.Payment[0].Receipt
-		Authorization = placeToPayResponse.Payment[0].Authorization
-	}
+	var InternalReference float64
 
+	handleResp := json.RawMessage(dataResp)
+	var responseMap interface{}
+	json.Unmarshal(handleResp, &responseMap)
+
+	itemsMap := responseMap.(map[string]interface{})
+	var payment []interface{}
+	if itemsMap["payment"] != nil {
+		payment = itemsMap["payment"].([]interface{})
+	}
+	paymentMethod := ""
+	paymentMethodName := ""
+	issuerName := ""
+	reference := ""
+	authorization := ""
+	receipt := ""
+	code := ""
+	groupCode := ""
+	codeLegend := ""
+	installments := ""
+	lastDigits := ""
+	for _, v := range payment {
+		paym := v.(map[string]interface{})
+		paymentMethod = paym["paymentMethod"].(string)
+		paymentMethodName = paym["paymentMethodName"].(string)
+		issuerName = paym["issuerName"].(string)
+		reference = paym["reference"].(string)
+		authorization = paym["authorization"].(string)
+		receipt = paym["receipt"].(string)
+		InternalReference = paym["internalReference"].(float64)
+		processorFields := paym["processorFields"].([]interface{})
+
+		for _, v1 := range processorFields {
+			val := v1.(map[string]interface{})
+			if val["keyword"] == "credit" {
+				value := val["value"].(map[string]interface{})
+				code = value["code"].(string)
+				groupCode = value["groupCode"].(string)
+				installments = value["installments"].(string)
+			}
+			if val["keyword"] == "lastDigits" {
+				lastDigits = val["value"].(string)
+			}
+		}
+
+	}
+	switch groupCode {
+	case "X":
+		codeLegend = "Plan pago especial"
+	case "P":
+		codeLegend = "Diferido propio diners"
+	case "M":
+		codeLegend = "Diferido Plus Pago Total"
+	case "D":
+		codeLegend = "Diferido Corriente"
+	case "C":
+		codeLegend = "Corriente"
+
+	}
 	// save the log of the payment request
 	var infoLog PlacetoPayGetInformationLog
 
@@ -196,7 +248,17 @@ func GetRequestInformation(requestID string) (*RedirectInformation, error) {
 			Reason:            placeToPayResponse.Status.Reason,
 			Message:           placeToPayResponse.Status.Message,
 			InternalReference: InternalReference,
-			Authorization:     Authorization,
+			Authorization:     authorization,
+			PaymentMethod:     paymentMethod,
+			PaymentMethodName: paymentMethodName,
+			IssuerName:        issuerName,
+			Reference:         reference,
+			Receipt:           receipt,
+			GroupCode:         groupCode,
+			Code:              code,
+			CodeLegend:        codeLegend,
+			Installments:      installments,
+			LastDigits:        lastDigits,
 		}
 
 		if result := tx.Create(&requestLog); result.Error != nil {
@@ -215,11 +277,19 @@ func GetRequestInformation(requestID string) (*RedirectInformation, error) {
 			infoLog.Reason = placeToPayResponse.Status.Reason
 			infoLog.Message = placeToPayResponse.Status.Message
 			infoLog.InternalReference = InternalReference
-			infoLog.Authorization = Authorization
+			infoLog.Authorization = authorization
+			infoLog.PaymentMethod = paymentMethod
+			infoLog.PaymentMethodName = paymentMethodName
+			infoLog.IssuerName = issuerName
+			infoLog.Reference = reference
+			infoLog.Receipt = receipt
+			infoLog.GroupCode = groupCode
+			infoLog.Code = code
+			infoLog.CodeLegend = codeLegend
+			infoLog.LastDigits = lastDigits
 			if result := P2PDB.Save(&infoLog); result.Error != nil {
 				return nil, errors.New("error updating the data")
 			}
-			fmt.Println("sds")
 		}
 	}
 	return &placeToPayResponse, nil

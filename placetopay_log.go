@@ -29,7 +29,7 @@ type PlacetoPayRequestLog struct {
 	DeletedAt      null.Time `json:"-"`
 }
 
-// PlacetoPayGetInformationLog structure
+//PlacetoPayGetInformationLog structure
 type PlacetoPayGetInformationLog struct {
 	ID                int       `json:"id" gorm:"PRIMARY_KEY; AUTO_INCREMENT;size:11" `
 	Active            bool      `json:"active"`
@@ -38,14 +38,24 @@ type PlacetoPayGetInformationLog struct {
 	Status            string    `json:"status"`
 	Reason            string    `json:"reason"`
 	Message           string    `json:"message"`
-	InternalReference string    `json:"internalReference"`
+	InternalReference float64   `json:"internalReference"`
 	Authorization     string    `json:"authorization"`
+	PaymentMethod     string    `json:"paymentMethod" gorm:"size:250"`
+	PaymentMethodName string    `json:"paymentMethodName" gorm:"size:250"`
+	IssuerName        string    `json:"issuerName" gorm:"size:250"`
+	Reference         string    `json:"reference" gorm:"size:250"`
+	Receipt           string    `json:"receipt" gorm:"size:250"`
+	Code              string    `json:"code" gorm:"size:250"`
+	Installments      string    `json:"installments" gorm:"size:250"`
+	GroupCode         string    `json:"groupCode" gorm:"size:250"`
+	CodeLegend        string    `json:"codeLegend" gorm:"size:250"`
+	LastDigits        string    `json:"lastDigits"`
 	CreatedAt         time.Time `json:"createdAt"`
 	UpdatedAt         time.Time `json:"updatedAt"`
 	DeletedAt         null.Time `json:"-"`
 }
 
-// PlacetoPayReversePaymemt structure
+//PlacetoPayReversePaymemt structure
 type PlacetoPayReversePaymemt struct {
 	ID        int       `json:"id" gorm:"PRIMARY_KEY; AUTO_INCREMENT;size:11" `
 	Active    bool      `json:"active"`
