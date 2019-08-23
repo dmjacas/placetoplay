@@ -11,7 +11,7 @@ type PlacetoPayRequestLog struct {
 	ID             int       `json:"id" gorm:"PRIMARY_KEY; AUTO_INCREMENT;size:11" `
 	Active         bool      `json:"active"`
 	Reference      string    `json:"reference"`
-	AllResponse    string    `json:"allResponse" gorm:"size:5550"`
+	AllResponse    string    `json:"allResponse" gorm:"size:2550"`
 	Expiration     string    `json:"expiration" gorm:"size:2550"`
 	IPAddress      string    `json:"ipadres"`
 	ReturnURL      string    `json:"returnUrl" gorm:"size:550"`
