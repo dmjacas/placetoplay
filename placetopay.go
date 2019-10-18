@@ -210,8 +210,8 @@ func GetRequestInformation(requestID string) (*RedirectInformation, error) {
 			val := v1.(map[string]interface{})
 			if val["keyword"] == "credit" {
 				value := val["value"].(map[string]interface{})
-				code = value["code"].(string)
-				groupCode = value["groupCode"].(string)
+				code = fmt.Sprintf("%f", value["code"])
+				groupCode = fmt.Sprintf("%f", value["groupCode"])
 				installments = value["installments"].(string)
 			}
 			if val["keyword"] == "lastDigits" {
