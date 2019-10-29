@@ -482,6 +482,7 @@ type StatusBodyRequest struct {
 
 //TaxDetail structure
 type TaxDetail struct {
+	Kind          string  `json:"kind" binding:"omitempty,eq=valueAddedTax|eq=exciseDuty"`
 	ValueAddedTax string  `json:"valueAddedTax,omitempty"`
 	Amount        float64 `json:"amount,omitempty"`
 	Base          float64 `json:"base,omitempty"`
