@@ -212,7 +212,7 @@ func GetRequestInformation(requestID string) (*RedirectInformation, error) {
 				value := val["value"].(map[string]interface{})
 				code = fmt.Sprintf("%f", value["code"])
 				groupCode = fmt.Sprintf("%f", value["groupCode"])
-				installments = value["installments"].(string)
+				installments = fmt.Sprintf("%f", value["installments"])
 			}
 			if val["keyword"] == "lastDigits" {
 				lastDigits = val["value"].(string)
