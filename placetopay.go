@@ -202,7 +202,9 @@ func GetRequestInformation(requestID string) (*RedirectInformation, error) {
 		issuerName = paym["issuerName"].(string)
 		reference = paym["reference"].(string)
 		authorization = paym["authorization"].(string)
-		receipt = paym["receipt"].(string)
+		if paym["receipt"] != nil {
+			receipt = paym["receipt"].(string)
+		}
 		InternalReference = paym["internalReference"].(float64)
 		processorFields := paym["processorFields"].([]interface{})
 
